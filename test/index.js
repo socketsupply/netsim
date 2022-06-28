@@ -166,7 +166,7 @@ test('nat must be opened by outgoing messages', function (t) {
   t.end()
 
 })
-return
+
 test('nat (no firewall) must be opened by outgoing messages', function (t) {
 
   var echos = 0, received = false, dropped = false
@@ -224,7 +224,7 @@ test('nat (no firewall) must be opened by outgoing messages', function (t) {
 
 
   //Alice opens a port, by messaging the intro server C.
-  node_a.send.push({msg: "A->C", addr: {address: C, port: 1}, port: 10}) 
+  node_a.send("A->C", {address: C, port: 1}, 10) 
   network.iterate(-1)
 
   t.ok(received_a.length)
@@ -235,7 +235,7 @@ test('nat (no firewall) must be opened by outgoing messages', function (t) {
   t.notEqual(echo.msg.port, 10)
 
   //Bob holepunches to Alice by sending to the port opened by previous message
-  node_b.send.push({msg: "B-(holepunch)->A", addr: {address: A, port: echo.msg.port}, port: 20}) 
+  node_b.send("B-(holepunch)->A", {address: A, port: echo.msg.port}, 20) 
   network.iterate(-1)
   t.ok(received_a.length)
   var holepunch = received_a.shift()
@@ -246,7 +246,6 @@ test('nat (no firewall) must be opened by outgoing messages', function (t) {
   t.end()
 
 })
-
 
 test('nat (with firewall) must be opened by outgoing messages direct to peer', function (t) {
 
@@ -307,8 +306,8 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
 
 
   //Alice opens a port, by messaging the intro server C.
-  node_a.send.push({msg: "A->C", addr: {address: C, port: 1}, port: 10}) 
-  node_b.send.push({msg: "A->B", addr: {address: C, port: 1}, port: 10}) 
+  node_a.send("A->C", {address: C, port: 1}, 10) 
+  node_b.send("A->B", {address: C, port: 1}, 10) 
   network.iterate(-1)
 
   t.ok(received_a.length)
@@ -326,7 +325,7 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
 
 
   //Bob opens a port for alice by sending a packet to her, but Alice's firewall does not let it through
-  node_b.send.push({msg: "B-(holepunch)->A", addr: {address: A, port: echo_a.msg.port}, port: 10}) 
+  node_b.send("B-(holepunch)->A", {address: A, port: echo_a.msg.port}, 10) 
   network.iterate(-1)
 
   //this message did not get through but it did open B's firewall
@@ -341,20 +340,19 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
 
   //Alice holepunches to Body by sending to the port opened found from C, through the hole opened
   //by Bob's by previous message
-  node_a.send.push({msg: "A-(holepunch)->B", addr: {address: B, port: echo_b.msg.port}, port: 10}) 
+  node_a.send("A-(holepunch)->B", {address: B, port: echo_b.msg.port}, 10) 
   network.iterate(-1)
 
   t.equal(received_b.length, 1)
 
   //Bob can now send to Alice
-  node_b.send.push({msg: "B-(holepunch)->A", addr: {address: A, port: echo_a.msg.port}, port: 10}) 
+  node_b.send("B-(holepunch)->A", {address: A, port: echo_a.msg.port}, 10) 
   network.iterate(-1)
 
   t.equal(received_a.length, 1)
 
   t.end()
 })
-
 
 test('one side dependent nat requires birthday paradox', function (t) {
 
@@ -399,7 +397,7 @@ test('one side dependent nat requires birthday paradox', function (t) {
 
 
   //Alice opens a port, by messaging the intro server C.
-  node_a.send.push({msg: "A->C", addr: {address: C, port: 1}, port: 10}) 
+  node_a.send("A->C", {address: C, port: 1}, 10) 
 //  node_b.send.push({msg: "A->B", addr: {address: C, port: 1}, port: 10}) 
   network.iterate(-1)
 
@@ -426,7 +424,7 @@ test('one side dependent nat requires birthday paradox', function (t) {
   var rand_port = create_rand_port()
   for(var i = 0; i < N; i++) {
     //B the hard side opens 256 ports
-    node_b.send.push({msg: "B-(hb:holepunch)->A", addr: {address: A, port: echo_a.msg.port}, port: rand_port()}) 
+    node_b.send("B-(hb:holepunch)->A", {address: A, port: echo_a.msg.port}, rand_port()) 
   }
 
   network.iterate(-1)
@@ -438,7 +436,7 @@ test('one side dependent nat requires birthday paradox', function (t) {
   while(!received_b.length) {
     for(var i = 0; i < N; i++) {
       //the easy side sends messages to random ports
-      node_a.send.push({msg: "B-(hb:holepunch)->A", addr: {address: B, port: rand_port()}, port: 10}) 
+      node_a.send("B-(hb:holepunch)->A", {address: B, port: rand_port()}, 10) 
     }
     //console.log("ITERATE")
     tries += N
@@ -449,7 +447,7 @@ test('one side dependent nat requires birthday paradox', function (t) {
   received_a = []
   while(received_b.length) {
     var echo = received_b.shift()
-    node_b.send.push({msg: "echo:"+echo.msg, addr: echo.addr, port: echo.port})
+    node_b.send("echo:"+echo.msg, echo.addr, echo.port)
     network.iterate(-1)
     t.equal(received_a.shift().msg, "echo:"+echo.msg)
   }
