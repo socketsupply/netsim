@@ -1,4 +1,4 @@
-var {iterate, Node, Network, IndependentNat, IndependentFirewallNat, DependentNat} = require('../index2')
+var {iterate, Node, Network, IndependentNat, IndependentFirewallNat, DependentNat} = require('../index')
 var network = new Network()
 
 var test = require('tape')

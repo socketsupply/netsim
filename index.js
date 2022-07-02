@@ -1,44 +1,80 @@
+var Heap = require('heap')
+//var heap = new Heap()
 
-// 
-
-/*
-var network = {
-  <ip>: {
-    send: [{msg, addr}...],
-    recv: [{msg, addr, port}],
-  }
-}
-*/
 
 function noop () {}
 
+// this code works, but I'm not really very happy with it.
+// I'd rather have a simple datastructure rather than OO & inheritance
+// OO seems to send it self to an ugly mess
+
 class Node {
-  send = null;
-  recv = null;
+  network = null;
   constructor (fn) {
-    this.send = []
-    this.recv = []
     if(fn)
-      this.onMessage = fn((msg, addr, port) => {
-        this.send.push({msg, addr, port})
-      })
+      this.init = ()=>{
+        this.onMessage = fn(this.send.bind(this))
+      }
   }
+  send (msg, addr, port) {
+    this.network.send(msg, addr, port, this)
+  }
+}
+
+function cmp_ts (a, b) {
+  return a.ts - b.ts
+}
+
+function calcLatency (s,d) {
+  return (s.ts||0) + Math.random()
 }
 
 class Network extends Node {
   subnet = null
+  inited = false
   constructor (prefix) {
     super()
     this.prefix = prefix
     this.subnet = {}
     this.map = {}
     this.unmap = {}
+    this.heap = new Heap(cmp_ts)
   }
   add (address, node) {
+    if(this.prefix && !address.startsWith(this.prefix)) throw new Error('subnet address must start with prefix:'+this.prefix+', got:'+address)
     this.subnet[address] = node
+    node.network = this
+    node.address = address
+    //if the node is a nat, share our heap with it
+    if(node.subnet) node.heap = this.heap
+  }
+  send (msg, addr, port, source) {
+    if(!source) throw new Error('must provide source')
+    var dest = this.subnet[addr.address]
+    var _addr = {address:source.address, port}
+    if(dest) {
+      var ts = calcLatency(source, dest)
+      source.ts = ts
+      this.heap.push({ts, fn: () => {
+        dest.onMessage(msg, _addr, addr.port)
+      }})
+    }
+    else
+      this.drop(msg, addr, port, source)
+  }
+  init () {
+    if(this.inited) return
+    this.inited = true
+    for(var k in this.subnet)
+      this.subnet[k].init()
   }
   iterate (steps) {
-    iterate(this.subnet, this.drop.bind(this), steps)
+    this.init()
+    while(steps-- && this.heap.size()) {
+      var k = this.heap.pop()
+      if(!k) return;
+      k.fn(k.ts)
+    }
   }
   drop (msg, addr) {
     throw new Error('cannot send to outside address:'+JSON.stringify(addr))
@@ -62,10 +98,8 @@ class Nat extends Network {
   add (address, node) {
     if(!address.startsWith(this.prefix))
       throw new Error('node address must start with prefix:'+this.prefix+', got:'+address)
-    this.subnet[address] = node
-  }
-  iterate (steps) {
-    return iterate(this.subnet, this.drop.bind(this), steps)
+    super.add(address, node)
+    //this.subnet[address] = node
   }
   getPort () {
     this.ports = this.ports || {}
@@ -81,30 +115,29 @@ class Nat extends Network {
     return true
   }
   //subclasses must implement getKey
-  drop (msg, dst, src) {
-    var key = this.getKey(dst, src)
-    var port = this.map[key]
-    if(!port) {
-      port = this.getPort()
-      this.map[key] = port
-      this.unmap[port] = src
+  drop (msg, dst, port, source) {
+    //console.log("SORUCE", source)
+    var key = this.getKey(dst, {address:source.address, port: port})
+    var _port = this.map[key]
+    if(!_port) {
+      _port = this.getPort()
+      this.map[key] = _port
+      this.unmap[_port] = {address: source.address, port}
     }
     this.addFirewall(dst)
-    this.send.push({msg, addr: dst, port: port})
+    //console.log("SEND******", msg, dst, port, this)
+    this.network.send(msg, dst, _port, this)
   }
   //msg, from, to
   onMessage (msg, addr, port) {
     //network has received an entire packet
     if(!this.getFirewall(addr)) {
-//      console.log("FW!", addr)
-
       return
     }
 
-
     var dst = this.unmap[port]
     if(dst)
-      this.subnet[dst.address].recv.push({msg, addr, port: dst.port})
+      this.subnet[dst.address].onMessage(msg, addr, dst.port)
   }
 }
 
@@ -148,48 +181,4 @@ class DependentNat extends Nat {
   }
 }
 
-//iterate the network. steps=1 to do one set of message passes, -1 to run to completion
-
-//XXX a better approach here would be to use a heap (sorted queue) to order events
-//    with random sort values it would be possible to sample search of all possible orderings
-function iterate (subnet, drop, steps) {
-  if(!subnet) throw new Error('iterate *must* be passed `network`')
-  if(isNaN(steps)) throw new Error('steps must be number, use -1 to run til completion')
-  while(steps--) {
-    var changed = false
-    for(var ip in subnet) {
-      var node = subnet[ip]
-      if(node.send.length) {
-        var packet = node.send.shift()
-        changed = true
-        var dest = subnet[packet.addr.address]
-        if(dest) {
-          dest.recv.push({msg:packet.msg, addr: {address: ip, port: packet.port}, port: packet.addr.port})
-        }
-        else
-          //{msg, addr: to, port: from}
-          drop(packet.msg, packet.addr, {address: ip, port: packet.port})
-      }
-    }
-    for(var ip in subnet) {
-      var node = subnet[ip]
-      if(node.recv.length && node.onMessage) {
-        changed = true
-        var packet = node.recv.shift()
-        node.onMessage(packet.msg, packet.addr, packet.port)
-      }
-    }
-    
-    for(var ip in subnet) {
-      var node = subnet[ip]
-      if(node.subnet)
-        changed = node.iterate(1) || changed
-
-    }
-    
-    if(!changed) break;
-  }
-  return changed
-}
-
-module.exports = {iterate, Node, Network, IndependentNat, IndependentFirewallNat, DependentNat}
+module.exports = {Node, Network, IndependentNat, IndependentFirewallNat, DependentNat}
