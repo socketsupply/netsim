@@ -8,12 +8,16 @@ function noop () {}
 // I'd rather have a simple datastructure rather than OO & inheritance
 // OO seems to send it self to an ugly mess
 
+function toAddress (a) {
+  return a.address+':'+a.port
+}
+
 class Node {
   network = null;
   constructor (fn) {
     if(fn)
       this.init = ()=>{
-        this.onMessage = fn(this.send.bind(this))
+        this.onMessage = fn(this.send.bind(this), this.network.timer.bind(this.network), this)
       }
   }
   send (msg, addr, port) {
@@ -56,6 +60,9 @@ class Network extends Node {
       var ts = calcLatency(source, dest)
       source.ts = ts
       this.heap.push({ts, fn: () => {
+        var s = JSON.stringify(msg)
+        if(s.length > 23) s = s.substring(0, 20) + '...' 
+        console.log('MSG', toAddress(_addr)+'->'+toAddress(addr), s)
         dest.onMessage(msg, _addr, addr.port)
       }})
     }
@@ -75,6 +82,18 @@ class Network extends Node {
       if(!k) return;
       k.fn(k.ts)
     }
+  }
+  timer (delay, repeat, fn) {
+    if(!repeat)
+      this.heap.push({ts: this.ts + delay, fn: fn})
+    else {
+      var self = this
+      this.heap.push({ts: this.ts + delay, fn: function next () {
+        self.heap.push({ts: self.ts + repeat, fn: next})
+        fn()
+      }})
+    }      
+
   }
   drop (msg, addr) {
     throw new Error('cannot send to outside address:'+JSON.stringify(addr))
@@ -136,7 +155,7 @@ class Nat extends Network {
     }
 
     var dst = this.unmap[port]
-    if(dst)
+    if(dst) //TODO model this as another send
       this.subnet[dst.address].onMessage(msg, addr, dst.port)
   }
 }
