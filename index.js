@@ -89,8 +89,8 @@ class Network extends Node {
     else {
       var self = this
       this.heap.push({ts: this.ts + delay, fn: function next () {
-        self.heap.push({ts: self.ts + repeat, fn: next})
-        fn()
+        if(fn() !== false)
+          self.heap.push({ts: self.ts + repeat, fn: next})
       }})
     }      
 
@@ -144,7 +144,6 @@ class Nat extends Network {
       this.unmap[_port] = {address: source.address, port}
     }
     this.addFirewall(dst)
-    //console.log("SEND******", msg, dst, port, this)
     this.network.send(msg, dst, _port, this)
   }
   //msg, from, to
@@ -155,6 +154,7 @@ class Nat extends Network {
     }
 
     var dst = this.unmap[port]
+
     if(dst) //TODO model this as another send
       this.subnet[dst.address].onMessage(msg, addr, dst.port)
   }
