@@ -456,7 +456,7 @@ test('one side dependent nat requires birthday paradox', function (t) {
 
 //to make a connection between two 
 
-function test_hairpinning (name, Nat) {
+function test_hairpinning (name, Nat, supports_hairpinning) {
   test('hairpinning nat:'+name, function (t) {
     var network = new Network()
 
@@ -475,6 +475,7 @@ function test_hairpinning (name, Nat) {
     }))
 
     network.add(C, nat = new Nat('1.2.'))
+    nat.hairpinning = supports_hairpinning
     //nat.subnet = subnetwork
 
     nat.add(A, node_a = new Node((send) => (msg, addr, port) => {
@@ -489,8 +490,6 @@ function test_hairpinning (name, Nat) {
 
     network.iterate(-1)
 
-    console.log(received_a, received_b)
-
     var addr_b = received_a.shift().msg
     var addr_a = received_b.shift().msg
 
@@ -499,12 +498,19 @@ function test_hairpinning (name, Nat) {
     network.iterate(-1)
 
     console.log(received_a, received_b)
+    t.equal(received_a.length == 1, supports_hairpinning, 'received messages via hairpinning b->a')
+    t.equal(received_b.length == 1, supports_hairpinning,  'received messages via hairpinning a->b')
 
     t.end()
 
   })
 }
 
-test_hairpinning('Independent', IndependentNat)
-test_hairpinning('IndependentFirewall', IndependentFirewallNat)
-test_hairpinning('Dependent', DependentNat)
+//Independent and IndependentFirewall support hairpinning, out of the box
+//but Dependent does not.
+
+test_hairpinning('Independent', IndependentNat, true)
+test_hairpinning('IndependentFirewall', IndependentFirewallNat, true)
+test_hairpinning('Independent', IndependentNat, false)
+test_hairpinning('IndependentFirewall', IndependentFirewallNat, false)
+test_hairpinning('Dependent', DependentNat, false)
