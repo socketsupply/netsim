@@ -1,6 +1,14 @@
 var Heap = require('heap')
 //var heap = new Heap()
 
+function assertAddress (addr, name='addr') {
+  if(!isPort(addr.port) && 'string' === typeof addr.address)
+    throw new Error(addr+' *must* be {address, port} object')
+}
+
+function isPort (p) {
+  return p === (p & 0xffff)
+}
 
 function noop () {}
 
@@ -21,6 +29,7 @@ class Node {
       }
   }
   send (msg, addr, port) {
+    if(!isPort(port)) throw new Error('must provide source port')
     this.network.send(msg, addr, port, this)
   }
 }
@@ -53,6 +62,7 @@ class Network extends Node {
     if(node.subnet) node.heap = this.heap
   }
   send (msg, addr, port, source) {
+    assertAddress(addr)
     if(!source) throw new Error('must provide source')
     var dest = this.subnet[addr.address]
     var _addr = {address:source.address, port}
@@ -62,7 +72,6 @@ class Network extends Node {
       this.heap.push({ts, fn: () => {
         var s = JSON.stringify(msg)
         if(s.length > 23) s = s.substring(0, 20) + '...' 
-        console.log('MSG', toAddress(_addr)+'->'+toAddress(addr), s)
         dest.onMessage(msg, _addr, addr.port)
       }})
     }
@@ -190,7 +199,7 @@ class DependentNat extends Nat {
     this.firewall = {}
   }
   getKey (dst, src) {
-    return dst.address+':'+dst.port+'->'+src.port
+    return dst.address+':'+dst.port+'->'+src.address+':'+src.port
   }
   addFirewall(addr) {
     this.firewall[addr.address+':'+addr.port] = true
