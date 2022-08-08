@@ -127,6 +127,7 @@ class Nat extends Network {
   add (address, node) {
     if(!address.startsWith(this.prefix))
       throw new Error('node address must start with prefix:'+this.prefix+', got:'+address)
+    node.localAddress = address
     super.add(address, node)
     //this.subnet[address] = node
   }
