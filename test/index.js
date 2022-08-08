@@ -455,3 +455,56 @@ test('one side dependent nat requires birthday paradox', function (t) {
 })
 
 //to make a connection between two 
+
+function test_hairpinning (name, Nat) {
+  test('hairpinning nat:'+name, function (t) {
+    var network = new Network()
+
+    var C = '1.2.0.0'
+    var A = '1.2.3.4'
+    var B = '1.2.5.6'
+    var I = '5.5.5.5'
+
+    var node_intro, node_A, node_B, nat, received_a = [], received_b = []
+
+    network.add(I, node_intro = new Node((send) => {
+      return (msg, addr, port) => {
+        console.log("receive", msg, addr, port)
+        send(addr, addr, port)
+      }
+    }))
+
+    network.add(C, nat = new Nat('1.2.'))
+    //nat.subnet = subnetwork
+
+    nat.add(A, node_a = new Node((send) => (msg, addr, port) => {
+      received_a.push({msg, addr, port})
+    }))
+    nat.add(B, node_b = new Node((send) => (msg, addr, port) => {     
+      received_b.push({msg, addr, port})
+    }))
+
+    node_a.send('hello1', {address:I, port: 1000}, 1000)
+    node_b.send('hello2', {address:I, port: 1000}, 1000)
+
+    network.iterate(-1)
+
+    console.log(received_a, received_b)
+
+    var addr_b = received_a.shift().msg
+    var addr_a = received_b.shift().msg
+
+    node_a.send('hairpin?', addr_b, 1000)
+    node_b.send('hairpin?', addr_a, 1000)
+    network.iterate(-1)
+
+    console.log(received_a, received_b)
+
+    t.end()
+
+  })
+}
+
+test_hairpinning('Independent', IndependentNat)
+test_hairpinning('IndependentFirewall', IndependentFirewallNat)
+test_hairpinning('Dependent', DependentNat)
