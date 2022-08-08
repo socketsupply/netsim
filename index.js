@@ -72,6 +72,7 @@ class Network extends Node {
       this.heap.push({ts, fn: () => {
         var s = JSON.stringify(msg)
         if(s.length > 23) s = s.substring(0, 20) + '...' 
+        console.log('MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s) 
         dest.onMessage(msg, _addr, addr.port)
       }})
     }
@@ -144,7 +145,10 @@ class Nat extends Network {
   }
   //subclasses must implement getKey
   drop (msg, dst, port, source) {
-    //console.log("SORUCE", source)
+    if(dst.address === this.address) {
+      //drop message if we do not support hairpinning
+      if(!this.hairpinning) return
+    }
     var key = this.getKey(dst, {address:source.address, port: port})
     var _port = this.map[key]
     if(!_port) {
@@ -161,7 +165,6 @@ class Nat extends Network {
     if(!this.getFirewall(addr)) {
       return
     }
-
     var dst = this.unmap[port]
 
     if(dst) //TODO model this as another send
@@ -170,6 +173,10 @@ class Nat extends Network {
 }
 
 class IndependentNat extends Nat {
+  constructor () {
+    super()
+    this.hairpinning = true
+  }
   getKey (dst, src) {
     return src.address+':'+src.port
   }
@@ -178,6 +185,7 @@ class IndependentNat extends Nat {
 class IndependentFirewallNat extends Nat {
   constructor (prefix) {
     super(prefix)
+    this.hairpinning = true
     this.firewall = {}
   }
   getKey (dst, src) {
