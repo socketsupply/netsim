@@ -493,6 +493,9 @@ function test_hairpinning (name, Nat, supports_hairpinning) {
     var addr_b = received_a.shift().msg
     var addr_a = received_b.shift().msg
 
+    t.equal(addr_a.address, C, 'echo returned A an external address')
+    t.equal(addr_b.address, C, 'echo returned B an external address')
+
     node_a.send('hairpin?', addr_b, 1000)
     node_b.send('hairpin?', addr_a, 1000)
     network.iterate(-1)
@@ -500,6 +503,15 @@ function test_hairpinning (name, Nat, supports_hairpinning) {
     console.log(received_a, received_b)
     t.equal(received_a.length == 1, supports_hairpinning, 'received messages via hairpinning b->a')
     t.equal(received_b.length == 1, supports_hairpinning,  'received messages via hairpinning a->b')
+
+    received_a.shift()
+    received_b.shift()
+
+    node_a.send('direct', {address: B, port: 1000}, 1000)
+    node_b.send('direct', {address: A, port: 1000}, 1000)
+    network.iterate(-1)
+    t.equal(received_a.length == 1, true, 'received direct message to private address b->a')
+    t.equal(received_b.length == 1, true,  'received direct message to private address a->b')
 
     t.end()
 
