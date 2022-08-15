@@ -14,6 +14,7 @@ function assertFinished (t, network) {
 test('network add and remove', function (t) {
   var a = 'a.a.a.a'
   var b = 'b.b.b.b'
+  var bb = 'bb.b.b.b'
 
   var network = new Network()
   var node = new Node(()=>{})
@@ -27,6 +28,13 @@ test('network add and remove', function (t) {
   network.remove(node)
   t.equal(node.network, null)
   t.equal(node.address, null)
+
+  var nat = new IndependentNat()
+
+  nat.add(bb, node)
+  t.equal(node.address, bb)
+  network.add(b, nat)
+  t.equal(nat.address, b)
   t.end()
 })
 
