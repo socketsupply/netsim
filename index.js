@@ -140,7 +140,7 @@ class Nat extends Network {
       throw new Error('node address must start with prefix:'+this.prefix+', got:'+address)
 
     super.add(address, node)
-    node.localAddress = address
+    //node.address = address
     //this.subnet[address] = node
   }
   getPort () {
