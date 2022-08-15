@@ -11,6 +11,25 @@ function assertFinished (t, network) {
   }
 }
 
+test('network add and remove', function (t) {
+  var a = 'a.a.a.a'
+  var b = 'b.b.b.b'
+
+  var network = new Network()
+  var node = new Node(()=>{})
+  network.add(a, node)
+  t.equal(node.address, a)
+  t.equal(network.subnet[a], node)
+  network.add(b, node)
+  t.equal(node.address, b)
+  t.notEqual(network.subnet[a], node)
+  t.equal(network.subnet[b], node)
+  network.remove(node)
+  t.equal(node.network, null)
+  t.equal(node.address, null)
+  t.end()
+})
+
 test('echo', function (t) {
 //  t.plan(2)
 //  console.log(network)
@@ -105,7 +124,8 @@ test('nat', function (t) {
   var B = 'bb.bb.bb.bb'
   var a = 'a.a.a.a'
   //publically accessable echo server
-  network.add(A, new Node((send) => (msg, addr, port) => {
+  var nA, na
+  network.add(A, nA = new Node((send) => (msg, addr, port) => {
     echos++;
     console.log("ECHO:", msg, addr, port)
     //received address should be the nat's external address & the mapped port
@@ -113,12 +133,14 @@ test('nat', function (t) {
     t.equal(addr.address, B)
     send(msg, addr, port)
   }))
+  t.equal(nA.address, A)
+
   //var nat = network[B] = createNat('a.a.')
   var nat
   network.add(B, nat = new IndependentNat('a.a'))
   //nat.subnet = subnetwork
-
-  nat.add(a, new Node((send) => {
+  t.equal(nat.address, B)
+  nat.add(a, na = new Node((send) => {
     var hello = "HELLO FROM SUBNET"
     send(hello, {address: A, port: 10}, 1)
     return (msg, addr, port) => {
@@ -128,6 +150,8 @@ test('nat', function (t) {
       received = true
     }
   }))
+
+  t.equal(na.address, a)
 
   network.iterate(-1)
 //  console.log(JSON.stringify(network, null, 2))

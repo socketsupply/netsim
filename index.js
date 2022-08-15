@@ -55,11 +55,22 @@ class Network extends Node {
   }
   add (address, node) {
     if(this.prefix && !address.startsWith(this.prefix)) throw new Error('subnet address must start with prefix:'+this.prefix+', got:'+address)
+
+    if(node.network) {
+      node.network.remove(node)
+    }
     this.subnet[address] = node
     node.network = this
     node.address = address
     //if the node is a nat, share our heap with it
     if(node.subnet) node.heap = this.heap
+  }
+  remove (node) {
+    if(!node.network === this) return
+    if(this.subnet[node.address] !== node) throw new Error("invalid network->node relationship.\n node's address does not agree with network's map")
+    delete this.subnet[node.address]
+    node.network = null
+    node.address = null
   }
   send (msg, addr, port, source) {
     assertAddress(addr)
@@ -127,8 +138,9 @@ class Nat extends Network {
   add (address, node) {
     if(!address.startsWith(this.prefix))
       throw new Error('node address must start with prefix:'+this.prefix+', got:'+address)
-    node.localAddress = address
+
     super.add(address, node)
+    node.localAddress = address
     //this.subnet[address] = node
   }
   getPort () {
