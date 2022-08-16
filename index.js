@@ -51,6 +51,7 @@ class Network extends Node {
     this.subnet = {}
     this.map = {}
     this.unmap = {}
+    this.ts = 0
     this.heap = new Heap(cmp_ts)
   }
   add (address, node) {
@@ -100,6 +101,15 @@ class Network extends Node {
     this.init()
     while(steps-- && this.heap.size()) {
       var k = this.heap.pop()
+      if(!k) return;
+      k.fn(k.ts)
+    }
+  }
+  iterateUntil (ts) {
+    this.init()
+    while(this.heap.peek().ts < ts) {
+      var k = this.heap.pop()
+      this.ts = k.ts
       if(!k) return;
       k.fn(k.ts)
     }
