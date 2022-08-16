@@ -558,3 +558,15 @@ test_hairpinning('IndependentFirewall', IndependentFirewallNat, true)
 test_hairpinning('Independent', IndependentNat, false)
 test_hairpinning('IndependentFirewall', IndependentFirewallNat, false)
 test_hairpinning('Dependent', DependentNat, false)
+
+test('timers, and iterateUntil', function (t) {
+  var network = new Network()
+  var c = 0
+  network.timer(10, 100, ()=>{
+    c++
+  })
+  console.log(network.heap)
+  network.iterateUntil(1000)
+  t.equal(c, 10)
+  t.end()
+})
