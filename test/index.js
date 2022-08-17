@@ -570,3 +570,39 @@ test('timers, and iterateUntil', function (t) {
   t.equal(c, 10)
   t.end()
 })
+
+test('offline', function (t) {
+  var network = new Network()
+  var received = []
+  var echo_node = new Node(function (send) {
+    return function (msg, addr, port) {
+      console.log('received', msg)
+      send(msg, addr, port)
+    }
+  })
+  network.add('1.2.3.4', echo_node)  
+  var addr = {address: '1.2.3.4', port:1234}
+  var send
+  var node = new Node(function (_send) {
+    send = _send
+    send('hello1', addr, 1234)
+    return function (msg) {
+      received.push(msg)
+    }
+  })
+  network.add('5.6.7.8', node)
+
+  network.iterate(-1)
+  t.deepEqual(received, ['hello1'])
+  network.remove(node)
+  send('hello2', addr, 1234)
+
+  network.iterate(-1)
+  network.add('5.6.7.8', node)
+  send('hello3', addr, 1234)
+  network.iterate(-1)
+
+  t.deepEqual(received, ['hello1', 'hello3'])
+  t.end()
+
+})
