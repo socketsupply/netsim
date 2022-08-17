@@ -24,14 +24,26 @@ class Node {
   constructor (fn) {
     if(fn)
       this.init = ()=>{
-        this.onMessage = fn(this.send.bind(this), this.network.timer.bind(this.network), this)
+        this.onMessage = fn(this.send.bind(this), this.timer.bind(this), this)
       }
   }
   send (msg, addr, port) {
     if(!isPort(port)) throw new Error('must provide source port')
-    if(this.network)
+    if(this.network && !this.sleeping)
       this.network.send(msg, addr, port, this)
     //else if offline, just drop messages
+  }
+  timer (delay, repeat, fn) {
+    this.network.timer(delay, repeat, (ts)=>{
+      if(this.sleeping) {
+        if(repeat) return
+        if(delay) throw new Error('sleeping during a delay only timer is not supported')
+      }
+      return fn(ts)
+    })
+  }
+  sleep (sleeping) {
+    this.sleeping = sleeping === true
   }
 }
 
@@ -75,7 +87,7 @@ class Network extends Node {
     var dest = this.subnet[addr.address]
     var _addr = {address:source.address, port}
     if(dest) {
-      this.queue.delay(calcLatency(source, dest), () => {
+      this.queue.delay(calcLatency(source, dest), (ts) => {
         var s = JSON.stringify(msg)
         if(s.length > 23) s = s.substring(0, 20) + '...' 
         console.log('MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s) 
