@@ -20,7 +20,6 @@ module.exports = class TsQueue extends Heap {
     while(this.size() && this.peek().ts < ts) {
       var item = this.pop()
       if(!(this.ts <= item.ts)) {
-        console.log(item, this)
         throw new Error('time cannot go backwards')
       }
       this.ts = item.ts
@@ -43,12 +42,12 @@ module.exports = class TsQueue extends Heap {
       this.delay(delay, fn)
     else {
       var self = this
-      function next () {
-        if(fn() !== false) {
+      function next (ts) {
+        if(fn(ts) !== false) {
           self.delay(repeat, next)
         }
       }
-        this.delay(delay || repeat, next)
+      this.delay(delay || repeat, next)
     }
   }
 }
