@@ -1,5 +1,4 @@
-var Heap = require('heap')
-//var heap = new Heap()
+var TsQueue = require('./ts-queue')
 
 function assertAddress (addr, name='addr') {
   if(!isPort(addr.port) && 'string' === typeof addr.address)
@@ -30,16 +29,14 @@ class Node {
   }
   send (msg, addr, port) {
     if(!isPort(port)) throw new Error('must provide source port')
-    this.network.send(msg, addr, port, this)
+    if(this.network)
+      this.network.send(msg, addr, port, this)
+    //else if offline, just drop messages
   }
 }
 
-function cmp_ts (a, b) {
-  return a.ts - b.ts
-}
-
 function calcLatency (s,d) {
-  return (s.ts||0) + Math.random()
+  return Math.random()
 }
 
 class Network extends Node {
@@ -51,8 +48,7 @@ class Network extends Node {
     this.subnet = {}
     this.map = {}
     this.unmap = {}
-    this.ts = 0
-    this.heap = new Heap(cmp_ts)
+    this.queue = new TsQueue()
   }
   add (address, node) {
     if(this.prefix && !address.startsWith(this.prefix)) throw new Error('subnet address must start with prefix:'+this.prefix+', got:'+address)
@@ -64,7 +60,7 @@ class Network extends Node {
     node.network = this
     node.address = address
     //if the node is a nat, share our heap with it
-    if(node.subnet) node.heap = this.heap
+    if(node.subnet) node.queue = this.queue
   }
   remove (node) {
     if(!node.network === this) return
@@ -79,14 +75,12 @@ class Network extends Node {
     var dest = this.subnet[addr.address]
     var _addr = {address:source.address, port}
     if(dest) {
-      var ts = calcLatency(source, dest)
-      source.ts = ts
-      this.heap.push({ts, fn: () => {
+      this.queue.delay(calcLatency(source, dest), () => {
         var s = JSON.stringify(msg)
         if(s.length > 23) s = s.substring(0, 20) + '...' 
         console.log('MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s) 
         dest.onMessage(msg, _addr, addr.port)
-      }})
+      })
     }
     else
       this.drop(msg, addr, port, source)
@@ -99,32 +93,18 @@ class Network extends Node {
   }
   iterate (steps) {
     this.init()
-    while(steps-- && this.heap.size()) {
-      var k = this.heap.pop()
-      if(!k) return;
-      k.fn(k.ts)
-    }
+    this.queue.drainSteps(steps)
   }
   iterateUntil (ts) {
     this.init()
-    while(this.heap.peek().ts < ts) {
-      var k = this.heap.pop()
-      this.ts = k.ts
-      if(!k) return;
-      k.fn(k.ts)
-    }
+    this.queue.drain(ts)
   }
+/*  delay (wait, fn) {
+    if(wait <= 0) throw new Error('delay must be positive, was:'+wait)
+    this.queue.delay(wait, fn)
+  }*/
   timer (delay, repeat, fn) {
-    if(!repeat)
-      this.heap.push({ts: this.ts + delay, fn: fn})
-    else {
-      var self = this
-      this.heap.push({ts: this.ts + delay, fn: function next () {
-        if(fn() !== false)
-          self.heap.push({ts: self.ts + repeat, fn: next})
-      }})
-    }      
-
+    this.queue.timer(delay, repeat, fn)
   }
   drop (msg, addr) {
     throw new Error('cannot send to outside address:'+JSON.stringify(addr))
