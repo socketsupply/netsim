@@ -607,7 +607,7 @@ test('offline', function (t) {
 
 })
 
-test('sleeping', function (t) {
+test('sleeping while timer', function (t) {
   var network = new Network()
   var received = []
   var n = 0
@@ -638,6 +638,42 @@ test('sleeping', function (t) {
   network.iterateUntil(1000)
 
   t.deepEqual(received, ['hello_1__100', 'hello_2__200', 'hello_3__800', 'hello_4__900'])
+
+  t.end()
+
+})
+
+test('sleeping while receiving', function (t) {
+  var network = new Network()
+  var received = []
+  var n = 0
+  var addr = {address: '5.6.7.8', port:1234}
+  var echo_node = new Node(function (send, timer) {
+    timer(100, 100, (ts)=>{
+      console.log("SEND!", ts)
+      send('hello_'+(++n)+'__'+ts, addr, 1234)
+    })
+    return function (msg, addr, port) {
+    }
+  })
+  network.add('1.2.3.4', echo_node)  
+  var node = new Node(function (send, timer) {
+    return function (msg) {
+      received.push(msg)
+    }
+  })
+  network.add('5.6.7.8', node)
+
+  network.timer(250, 0, () => {
+    node.sleep(true)
+  })
+  network.timer(750, 0, () => {
+    node.sleep(false)
+  })
+
+  network.iterateUntil(1000)
+
+  t.deepEqual(received, ['hello_1__100', 'hello_2__200', 'hello_8__800', 'hello_9__900'])
 
   t.end()
 
