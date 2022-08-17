@@ -91,7 +91,8 @@ class Network extends Node {
         var s = JSON.stringify(msg)
         if(s.length > 23) s = s.substring(0, 20) + '...' 
         console.log('MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s) 
-        dest.onMessage(msg, _addr, addr.port)
+        if(!dest.sleeping)
+          dest.onMessage(msg, _addr, addr.port)
       })
     }
     else
@@ -182,7 +183,7 @@ class Nat extends Network {
     }
     var dst = this.unmap[port]
 
-    if(dst) //TODO model this as another send
+    if(dst && !this.subnet[dst.address].sleeping) //TODO model this as another send
       this.subnet[dst.address].onMessage(msg, addr, dst.port)
   }
 }
