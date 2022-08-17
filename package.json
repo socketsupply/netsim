@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "node test/index.js"
+    "test": "set -e; for t in test/*; do node $t; done"
   },
   "author": "",
   "license": "ISC",
