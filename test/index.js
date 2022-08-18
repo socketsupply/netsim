@@ -44,12 +44,16 @@ test('echo', function (t) {
   var a = 'a.a.a.a'
   var b = 'b.b.b.b'
   var received = false
+  var _ts = 0
   function createBPeer (send) {
     send('hello', {address: a, port: 10}, 1)
-    return function onMessage (msg, addr, port) {
+    return function onMessage (msg, addr, port, ts) {
       console.log("RECV_A", msg, addr, port)
       t.equal(msg, 'hello')
       t.equal(port, 1)
+      t.ok('number' === typeof ts)
+      t.ok(ts > _ts)
+      _ts = ts
     }
   }
   //echo the received message straight back.
@@ -79,7 +83,18 @@ test('echo', function (t) {
 
 //return
 
+function createAssertMonotonic (t) {
+  var _ts = 0
+  return function assertMonotonic (ts) {
+    t.equal(typeof ts, 'number')
+    t.ok(ts > _ts, 'time is always increasing, '+ts+' > '+_ts)
+    _ts = ts
+  }
+
+}
+
 test('echo relay', function (t) {
+  var assertMonotonic = createAssertMonotonic(t)
   var network = new Network()
 //  t.plan(2)
   var a = 'a.a.a.a'
@@ -88,27 +103,30 @@ test('echo relay', function (t) {
   var received = false
   function createBPeer (send) {
     send({msg:'hello', forward: {address: a, port: 10}}, {address: c, port: 3}, 1)
-    return function onMessage (msg, addr, port) {
+    return function onMessage (msg, addr, port, ts) {
       t.equal(msg, 'hello')
       t.equal(port, 1)
+      assertMonotonic(ts)
     }
   }
   //echo the received message straight back.
   function createAPeer (send) {
-    return function onMessage (msg, addr, port) {
+    return function onMessage (msg, addr, port, ts) {
       received = true
       t.equal(msg, 'hello')
       t.equal(port, 10)
       t.equal(addr.address, c)
       t.equal(addr.port, 3)
+      assertMonotonic(ts)
       send({msg:msg, forward: {address:b, port: 1}}, addr, port)
     }
   }
 
   function createCPeer (send) {
-    return function onMessage (msg, addr, port) {
+    return function onMessage (msg, addr, port, ts) {
       t.equal(port, 3)
       send(msg.msg, msg.forward, port)
+      assertMonotonic(ts)
     }
   }
 
@@ -126,6 +144,7 @@ test('echo relay', function (t) {
 
 //return
 test('nat', function (t) {
+  var assertMonotonic = createAssertMonotonic(t)
   var echos = 0, received = false
   var network = new Network()
   var A = 'aa.aa.aa.aa'
@@ -133,12 +152,13 @@ test('nat', function (t) {
   var a = 'a.a.a.a'
   //publically accessable echo server
   var nA, na
-  network.add(A, nA = new Node((send) => (msg, addr, port) => {
+  network.add(A, nA = new Node((send) => (msg, addr, port, ts) => {
     echos++;
     console.log("ECHO:", msg, addr, port)
     //received address should be the nat's external address & the mapped port
     t.notEqual(addr.port, 1)
     t.equal(addr.address, B)
+    assertMonotonic(ts)
     send(msg, addr, port)
   }))
   t.equal(nA.address, A)
@@ -151,11 +171,12 @@ test('nat', function (t) {
   nat.add(a, na = new Node((send) => {
     var hello = "HELLO FROM SUBNET"
     send(hello, {address: A, port: 10}, 1)
-    return (msg, addr, port) => {
+    return (msg, addr, port, ts) => {
       t.equal(msg, hello)
       //received address should be the external server's real address
       t.deepEqual(addr, {address: A, port: 10})
       received = true
+      assertMonotonic(ts)
     }
   }))
 
@@ -169,6 +190,7 @@ test('nat', function (t) {
 })
 
 test('nat must be opened by outgoing messages', function (t) {
+  var assertMonotonic = createAssertMonotonic(t)
 
   var echos = 0, received = false, dropped = false
   var network = new Network()
@@ -188,8 +210,9 @@ test('nat must be opened by outgoing messages', function (t) {
   network.add(B, nat = new IndependentNat('a.a'))
   //nat.subnet = subnetwork
 
-  nat.add(a, new Node((send) => (msg, addr, port) => {
+  nat.add(a, new Node((send) => (msg, addr, port, ts) => {
     received = true
+    assertMonotonic(ts)
   }))
 
   network.iterate(-1)
