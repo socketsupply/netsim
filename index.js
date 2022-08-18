@@ -23,8 +23,8 @@ class Node {
   network = null;
   constructor (fn) {
     if(fn)
-      this.init = ()=>{
-        this.onMessage = fn(this.send.bind(this), this.timer.bind(this), this)
+      this.init = (ts)=>{
+        this.onMessage = fn(this.send.bind(this), this.timer.bind(this), this, ts)
       }
   }
   send (msg, addr, port) {
@@ -102,15 +102,15 @@ class Network extends Node {
     if(this.inited) return
     this.inited = true
     for(var k in this.subnet)
-      this.subnet[k].init()
+      this.subnet[k].init(0)
   }
   iterate (steps) {
     this.init()
     this.queue.drainSteps(steps)
   }
-  iterateUntil (ts) {
+  iterateUntil (until_ts) {
     this.init()
-    this.queue.drain(ts)
+    this.queue.drain(until_ts)
   }
 /*  delay (wait, fn) {
     if(wait <= 0) throw new Error('delay must be positive, was:'+wait)
