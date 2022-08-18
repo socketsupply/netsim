@@ -90,9 +90,9 @@ class Network extends Node {
       this.queue.delay(calcLatency(source, dest), (ts) => {
         var s = JSON.stringify(msg)
         if(s.length > 23) s = s.substring(0, 20) + '...' 
-        console.log('MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s) 
+        console.log('MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s, ts)
         if(!dest.sleeping)
-          dest.onMessage(msg, _addr, addr.port)
+          dest.onMessage(msg, _addr, addr.port, ts)
       })
     }
     else
@@ -123,7 +123,7 @@ class Network extends Node {
     throw new Error('cannot send to outside address:'+JSON.stringify(addr))
   }
   //msg, from, to
-  onMessage ({msg, addr, port}) {
+  onMessage (msg, addr, port, ts) {
     throw new Error('cannot receive message')
   }
 }
@@ -176,7 +176,7 @@ class Nat extends Network {
     this.network.send(msg, dst, _port, this)
   }
   //msg, from, to
-  onMessage (msg, addr, port) {
+  onMessage (msg, addr, port, ts) {
     //network has received an entire packet
     if(!this.getFirewall(addr)) {
       return
@@ -184,7 +184,7 @@ class Nat extends Network {
     var dst = this.unmap[port]
 
     if(dst && !this.subnet[dst.address].sleeping) //TODO model this as another send
-      this.subnet[dst.address].onMessage(msg, addr, dst.port)
+      this.subnet[dst.address].onMessage(msg, addr, dst.port, ts)
   }
 }
 
