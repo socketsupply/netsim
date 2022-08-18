@@ -45,7 +45,8 @@ test('echo', function (t) {
   var b = 'b.b.b.b'
   var received = false
   var _ts = 0
-  function createBPeer (send) {
+  function createBPeer (send, timer, self, ts) {
+    t.equal(ts, 0)
     send('hello', {address: a, port: 10}, 1)
     return function onMessage (msg, addr, port, ts) {
       console.log("RECV_A", msg, addr, port)
