@@ -1,8 +1,8 @@
 var TsQueue = require('./ts-queue')
 
 function assertAddress (addr, name='addr') {
-  if(!isPort(addr.port) && 'string' === typeof addr.address)
-    throw new Error(addr+' *must* be {address, port} object')
+  if(!isPort(addr.port) && 'string' !== typeof addr.address)
+    throw new Error(name+' *must* be {address, port} object, was:'+JSON.stringify(addr))
 }
 
 function isPort (p) {
@@ -28,6 +28,7 @@ class Node {
       }
   }
   send (msg, addr, port) {
+    assertAddress(addr)
     if(!isPort(port)) throw new Error('must provide source port')
     if(this.network && !this.sleeping)
       this.network.send(msg, addr, port, this)
@@ -183,7 +184,7 @@ class Nat extends Network {
     }
     var dst = this.unmap[port]
 
-    if(dst && !this.subnet[dst.address].sleeping) //TODO model this as another send
+    if(dst && this.subnet[dst.address] && !this.subnet[dst.address].sleeping) //TODO model this as another send
       this.subnet[dst.address].onMessage(msg, addr, dst.port, ts)
   }
 }
