@@ -134,6 +134,7 @@ class Nat extends Network {
   subnet = null
   constructor (prefix) {
     super()
+    this.TTL = 30_000
     this.prefix = prefix || ''
     this.subnet = {}
     this.map = {}
@@ -158,10 +159,11 @@ class Nat extends Network {
 
   }
   getFirewall (addr) {
-    return true
+    //returns the current time, same effect as always letting it through
+    return this.queue.ts || 1
   }
   //subclasses must implement getKey
-  drop (msg, dst, port, source) {
+  drop (msg, dst, port, source, ts) {
     if(dst.address === this.address) {
       //drop message if we do not support hairpinning
       if(!this.hairpinning) return
@@ -173,15 +175,19 @@ class Nat extends Network {
       this.map[key] = _port
       this.unmap[_port] = {address: source.address, port}
     }
-    this.addFirewall(dst)
+    this.addFirewall(dst, this.queue.ts || 1)
     this.network.send(msg, dst, _port, this)
   }
   //msg, from, to
   onMessage (msg, addr, port, ts) {
     //network has received an entire packet
-    if(!this.getFirewall(addr)) {
+    var fw = this.getFirewall(addr)
+    if(fw == null || fw + this.TTL < ts) {
       return
     }
+    else //received messages, with open firewall, extend the TTL
+      this.addFirewall(addr, ts)
+
     var dst = this.unmap[port]
 
     if(dst && this.subnet[dst.address] && !this.subnet[dst.address].sleeping) //TODO model this as another send
@@ -208,11 +214,11 @@ class IndependentFirewallNat extends Nat {
   getKey (dst, src) {
     return src.address+':'+src.port
   }
-  addFirewall(addr) {
-    this.firewall[addr.address+':'+addr.port] = true
+  addFirewall(addr, ts) {
+    this.firewall[addr.address+':'+addr.port] = ts
   }
   getFirewall(addr) {
-    return !!this.firewall[addr.address+':'+addr.port]
+    return this.firewall[addr.address+':'+addr.port]
   }
 }
 
@@ -226,11 +232,11 @@ class DependentNat extends Nat {
   getKey (dst, src) {
     return dst.address+':'+dst.port+'->'+src.address+':'+src.port
   }
-  addFirewall(addr) {
-    this.firewall[addr.address+':'+addr.port] = true
+  addFirewall(addr, ts) {
+    this.firewall[addr.address+':'+addr.port] = ts
   }
   getFirewall(addr) {
-    return !!this.firewall[addr.address+':'+addr.port]
+    return this.firewall[addr.address+':'+addr.port]
   }
 }
 
