@@ -369,10 +369,7 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   t.equal(echo_a.msg.address, A)
   t.notEqual(echo_a.msg.port, 10)
 
-  t.deepEqual(nat_B.firewall, {
-    [C+':1']: true,
-  })
-
+  t.ok(nat_B.firewall[C+':1'])
 
   //Bob opens a port for alice by sending a packet to her, but Alice's firewall does not let it through
   node_b.send("B-(holepunch)->A", {address: A, port: echo_a.msg.port}, 10) 
@@ -382,10 +379,8 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   t.equal(received_a.length, 0)
   t.equal(received_b.length, 0)
 
-  t.deepEqual(nat_B.firewall, {
-    [C+':1']: true,
-    [A+':'+echo_a.msg.port]: true
-  })
+  t.ok(nat_B.firewall[C+':1'])
+  t.ok(nat_B.firewall[A+':'+echo_a.msg.port])
 
 
   //Alice holepunches to Body by sending to the port opened found from C, through the hole opened
@@ -705,7 +700,7 @@ test('nat timeout', function (t) {
     var echo_node = new Node(function (send, timer) {
       return function (msg, addr, port) {
         timer(msg.delay, 0, (ts)=>{
-          send({echo: msg}, addr, 1234)
+          send({echo: msg}, addr, port)
         })
 
       }
@@ -719,11 +714,17 @@ test('nat timeout', function (t) {
     network.add('1.2.3.4', echo_node)  
     network.add('5.6.7.8', nat)
     nat.add('5.6.7.80', node)
-    return node
+    return [node, nat]
   }
-  var node = EchoNat(network, IndependentFirewallNat)
-  node.send({type:'ping', value: 1, delay: 15_000}, {address:'1.2.3.4', port:1234}, 1234)
+  var [node, nat] = EchoNat(network, IndependentFirewallNat)
+  node.send({type:'ping', value: 1, delay: 29_000}, {address:'1.2.3.4', port:1234}, 1234)
+  node.send({type:'ping', value: 2, delay: 31_000}, {address:'1.2.3.4', port:1234}, 1234)
+  //actually, I think this is wrong now. The firewall should care about the source port.
+  node.send({type:'ping', value: 3, delay: 15_000}, {address:'1.2.3.4', port:1235}, 1235)
+  node.send({type:'ping', value: 4, delay: 46_000}, {address:'1.2.3.4', port:1235}, 1235)
+
   network.iterateUntil(60_000)
   console.log(received)
+  console.log(nat)
   t.end()
 })
