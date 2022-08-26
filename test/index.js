@@ -195,21 +195,16 @@ test('nat must be opened by outgoing messages', function (t) {
 
   var echos = 0, received = false, dropped = false
   var network = new Network()
-  network.drop = function () {
-    dropped = true
-  }
   var A = 'aa.aa.aa.aa'
   var B = 'bb.bb.bb.bb'
   var a = 'a.a.a.a'
-  //publically accessable echo server
+  //server sends message to nat, but it is not received
   network.add(A, new Node((send) => {
-    send("ANYONE HOME?", B, 1)
+    send("ANYONE HOME?", {address:B, port:1}, 1)
     return (msg, addr, port) => {}
   }))
-  //var nat = network[B] = createNat('a.a.')
   var nat
   network.add(B, nat = new IndependentNat('a.a'))
-  //nat.subnet = subnetwork
 
   nat.add(a, new Node((send) => (msg, addr, port, ts) => {
     received = true
@@ -218,7 +213,6 @@ test('nat must be opened by outgoing messages', function (t) {
 
   network.iterate(-1)
   t.equal(received, false)
-  t.equal(dropped, true)
   t.end()
 
 })
@@ -239,7 +233,7 @@ test('nat (no firewall) must be opened by outgoing messages', function (t) {
   //publically accessable rendevu server.
   //sends the source address back, so the natted'd peer knows it's external address
   network.add(C, node_c = new Node((send) => {
-    send("ANYONE HOME?", B, 1)
+    send("ANYONE HOME?", {address:B,port:1}, 1)
     return (msg, addr, port) => {
       console.log("ECHO ADDR", {msg, addr, port})
       send(addr, addr, port)
@@ -319,7 +313,7 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   //publically accessable rendevu server.
   //sends the source address back, so the natted'd peer knows it's external address
   network.add(C, node_c = new Node((send) => {
-    send("ANYONE HOME?", B, 1)
+    send("ANYONE HOME?", {address:B, port: 1}, 1)
     return (msg, addr, port) => {
       console.log("ECHO ADDR", {msg, addr, port})
       send(addr, addr, port)
@@ -427,7 +421,7 @@ test('one side dependent nat requires birthday paradox', function (t) {
   //publically accessable rendevu server.
   //sends the source address back, so the natted'd peer knows it's external address
   network.add(C, node_c = new Node((send) => {
-    send("ANYONE HOME?", B, 1)
+    send("ANYONE HOME?", {address:B,port:1}, 1)
     return (msg, addr, port) => {
       console.log("ECHO ADDR", {msg, addr, port})
       send(addr, addr, port)
@@ -701,4 +695,35 @@ test('sleeping while receiving', function (t) {
 
   t.end()
 
+})
+
+test('nat timeout', function (t) {
+  var network = new Network()
+  var received = []
+  function EchoNat(network, Nat) {
+    var nat = new Nat('5.6.')
+    var echo_node = new Node(function (send, timer) {
+      return function (msg, addr, port) {
+        timer(msg.delay, 0, (ts)=>{
+          send({echo: msg}, addr, 1234)
+        })
+
+      }
+    })
+    var node = new Node(function (send, timer) {
+      return function (msg, port, ts) {
+        msg.ts = ts
+        received.push(msg)
+      }
+    })
+    network.add('1.2.3.4', echo_node)  
+    network.add('5.6.7.8', nat)
+    nat.add('5.6.7.80', node)
+    return node
+  }
+  var node = EchoNat(network, IndependentFirewallNat)
+  node.send({type:'ping', value: 1, delay: 15_000}, {address:'1.2.3.4', port:1234}, 1234)
+  network.iterateUntil(60_000)
+  console.log(received)
+  t.end()
 })
