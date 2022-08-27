@@ -175,18 +175,18 @@ class Nat extends Network {
       this.map[key] = _port
       this.unmap[_port] = {address: source.address, port}
     }
-    this.addFirewall(dst, this.queue.ts || 1)
+    this.addFirewall(dst, _port, this.queue.ts || 1)
     this.network.send(msg, dst, _port, this)
   }
   //msg, from, to
   onMessage (msg, addr, port, ts) {
     //network has received an entire packet
-    var fw = this.getFirewall(addr)
+    var fw = this.getFirewall(addr, port)
     if(fw == null || fw + this.TTL < ts) {
       return
     }
     else //received messages, with open firewall, extend the TTL
-      this.addFirewall(addr, ts)
+      this.addFirewall(addr, port, ts)
 
     var dst = this.unmap[port]
 
@@ -214,11 +214,11 @@ class IndependentFirewallNat extends Nat {
   getKey (dst, src) {
     return src.address+':'+src.port
   }
-  addFirewall(addr, ts) {
-    this.firewall[addr.address+':'+addr.port] = ts
+  addFirewall(addr, port, ts) {
+    this.firewall[addr.address+':'+addr.port+':'+port] = ts
   }
-  getFirewall(addr) {
-    return this.firewall[addr.address+':'+addr.port]
+  getFirewall(addr, port) {
+    return this.firewall[addr.address+':'+addr.port+':'+port]
   }
 }
 
@@ -232,10 +232,10 @@ class DependentNat extends Nat {
   getKey (dst, src) {
     return dst.address+':'+dst.port+'->'+src.address+':'+src.port
   }
-  addFirewall(addr, ts) {
+  addFirewall(addr, port, ts) {
     this.firewall[addr.address+':'+addr.port] = ts
   }
-  getFirewall(addr) {
+  getFirewall(addr, port) {
     return this.firewall[addr.address+':'+addr.port]
   }
 }
