@@ -300,6 +300,8 @@ test('nat (no firewall) must be opened by outgoing messages', function (t) {
 test('nat (with firewall) must be opened by outgoing messages direct to peer', function (t) {
 
   var echos = 0, received = false, dropped = false
+  var nat_A, nat_B, received_a = [], received_b = [], received_echo = []
+
   var network = new Network()
   network.drop = function () {
     dropped = true
@@ -315,11 +317,11 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   network.add(C, node_c = new Node((send) => {
     send("ANYONE HOME?", {address:B, port: 1}, 1)
     return (msg, addr, port) => {
+      received_echo.push({msg,addr,port})
       console.log("ECHO ADDR", {msg, addr, port})
       send(addr, addr, port)
     }
   }))
-  var nat_A, nat_B, received_a = [], received_b = []
   network.add(B, nat_B = new IndependentFirewallNat('b.b.'))
   network.add(A, nat_A = new IndependentFirewallNat('a.a.'))
   //nat.subnet = subnetwork
@@ -354,11 +356,19 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   It's a NAT but no firewall
   */
 
+//  network.iterate(-1)
+
+  //the message sent to be should not have been received because firewall is not opened yet
+  network.iterate(-1)
+  t.equal(received_b.length, 0)
 
   //Alice opens a port, by messaging the intro server C.
   node_a.send("A->C", {address: C, port: 1}, 10) 
-  node_b.send("A->B", {address: C, port: 1}, 10) 
+  node_b.send("B->C", {address: C, port: 1}, 10) 
   network.iterate(-1)
+
+  t.equal(received_a.length, 1)
+  t.equal(received_b.length, 1)
 
   t.ok(received_a.length)
   t.ok(received_b.length)
@@ -369,7 +379,7 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   t.equal(echo_a.msg.address, A)
   t.notEqual(echo_a.msg.port, 10)
 
-  t.ok(nat_B.firewall[C+':1'])
+  t.equal(Object.keys(nat_B.firewall).length, 1)
 
   //Bob opens a port for alice by sending a packet to her, but Alice's firewall does not let it through
   node_b.send("B-(holepunch)->A", {address: A, port: echo_a.msg.port}, 10) 
@@ -379,8 +389,10 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   t.equal(received_a.length, 0)
   t.equal(received_b.length, 0)
 
-  t.ok(nat_B.firewall[C+':1'])
-  t.ok(nat_B.firewall[A+':'+echo_a.msg.port])
+  console.log(nat_B.firewall) ///XXX??? 
+  console.log(received_echo)
+
+  t.equal(Object.keys(nat_B.firewall).length, 2)
 
 
   //Alice holepunches to Body by sending to the port opened found from C, through the hole opened
