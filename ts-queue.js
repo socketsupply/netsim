@@ -4,6 +4,11 @@ function cmp (a, b) {
   return a.ts - b.ts
 }
 
+function assertForwards(curr_ts, next_ts) {
+  if(!(curr_ts < next_ts))
+  throw new Error('time cannot go backwards, current '+curr_ts+' should have been before next item:'+next_ts)
+}
+
 module.exports = class TsQueue extends Heap {
   constructor () {
     super(cmp)
@@ -14,13 +19,13 @@ module.exports = class TsQueue extends Heap {
   }
   delay (delay, fn) {
     if(delay <= 0) throw new Error('delay must be positive')
+    if(isNaN(delay)) throw new Error('cannot delay NaN:'+delay)
     super.push({ts:this.ts+delay, fn})
   }
   drain (ts) {
     while(this.size() && this.peek().ts < ts) {
       var item = this.pop()
       if(!(this.ts <= item.ts)) {
-        throw new Error('time cannot go backwards')
       }
       this.ts = item.ts
       item.fn(item.ts)
@@ -29,7 +34,7 @@ module.exports = class TsQueue extends Heap {
   drainSteps(s) {
     while(this.size() && s--) {
       var item = this.pop()
-      if(!(this.ts < item.ts)) throw new Error('time cannot go backwards')
+      assertForwards(this.ts, item.ts)
       this.ts = item.ts
       item.fn(item.ts)
     }
