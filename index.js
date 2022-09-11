@@ -73,11 +73,12 @@ class Network extends Node {
     node.network = this
     node.address = address
     //if the node is a nat, share our heap with it
-    if(!node.inited) {
+    if(node.subnet) node.queue = this.queue
+
+    if(this.inited && !node.inited) {
       node.inited = true
       node.init(this.queue.ts)
     }
-    if(node.subnet) node.queue = this.queue
   }
   remove (node) {
     if(!node.network === this) return
@@ -104,7 +105,6 @@ class Network extends Node {
       this.drop(msg, addr, port, source)
   }
   init () {
-    console.log("INIT?", this.subnet)
     for(var k in this.subnet) {
       if(!this.subnet[k].inited) {
         this.subnet[k].inited = true
