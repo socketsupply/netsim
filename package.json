@@ -1,7 +1,7 @@
 {
   "name": "@socketsupply/netsim",
   "version": "3.6.4",
-  "description": "",
+  "description": "netsim deterministically simulates networks for use testing distributed and peer to peer systems.",
   "main": "index.js",
   "directories": {
     "test": "test"
@@ -13,5 +13,13 @@
   "license": "ISC",
   "dependencies": {
     "heap": "^0.2.7"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/socketsupply/netsim.git"
+  },
+  "bugs": {
+    "url": "https://github.com/socketsupply/netsim/issues"
+  },
+  "homepage": "https://github.com/socketsupply/netsim#readme"
 }
