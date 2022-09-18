@@ -740,3 +740,38 @@ test('nat timeout', function (t) {
   console.log(nat)
   t.end()
 })
+
+
+test('create node with object', function (t) {
+  var network = new Network()
+  var received = []
+  var echo = new Node({
+    name: 'echo',
+    on_msg (msg, addr, port, ts) {
+      t.equal(this.localAddress, B)
+      this.send({...msg, bounce: this.localAddress, source: addr.address}, addr, port)
+    }
+  })
+  var client = new Node({
+    name: 'client',
+    init () {
+      t.equal(this.localAddress, A)
+      this.send({type:'hello'}, {address:B, port:1234}, 1234)
+    },
+    on_msg (msg) {
+      received.push(msg)
+    }
+  })
+  var A = '1.2.3.4', B = '5.6.7.8'
+
+  network.add(B, echo)
+  network.add(A, client)
+  network.iterate(-1)
+  t.deepEqual(received, [{
+    type:'hello',
+    bounce: B,
+    source: A
+  }])
+
+  t.end()
+})
