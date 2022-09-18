@@ -20,12 +20,23 @@ function toAddress (a) {
 }
 
 class Node {
-  network = null;
-  constructor (fn) {
-    if(fn)
+//  network = null;
+  constructor (proto) {
+    if('function' === typeof proto)
       this.init = (ts)=>{
-        this.onMessage = fn(this.send.bind(this), this.timer.bind(this), this, ts)
+        this.onMessage = proto(this.send.bind(this), this.timer.bind(this), this, ts)
       }
+    else if('object' === typeof proto) {
+      this.init = ts => proto.init && proto.init(ts)
+      this.onMessage = (msg, addr, port, ts) => {
+        proto.on_msg(msg, addr, port, ts)
+      }
+      Object.defineProperty(proto, 'localAddress', {
+        get: () => this.address
+      })
+      proto.timer = this.timer.bind(this)
+      proto.send = this.send.bind(this)
+    }
   }
   send (msg, addr, port) {
     assertAddress(addr)
@@ -72,6 +83,7 @@ class Network extends Node {
     this.subnet[address] = node
     node.network = this
     node.address = address
+    console.log("ADD", node, this)
     //if the node is a nat, share our heap with it
     if(node.subnet) node.queue = this.queue
 
