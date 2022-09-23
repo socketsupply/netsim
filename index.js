@@ -83,7 +83,6 @@ class Network extends Node {
     this.subnet[address] = node
     node.network = this
     node.address = address
-    console.log("ADD", node, this)
     //if the node is a nat, share our heap with it
     if(node.subnet) node.queue = this.queue
 
@@ -116,20 +115,20 @@ class Network extends Node {
     else
       this.drop(msg, addr, port, source)
   }
-  init () {
+  init (ts) {
     for(var k in this.subnet) {
       if(!this.subnet[k].inited) {
         this.subnet[k].inited = true
-        this.subnet[k].init(0)
+        this.subnet[k].init(ts)
       }
     }
   }
   iterate (steps) {
-    this.init()
+    this.init(this.queue.ts)
     this.queue.drainSteps(steps)
   }
   iterateUntil (until_ts) {
-    this.init()
+    this.init(this.queue.ts)
     this.queue.drain(until_ts)
   }
 /*  delay (wait, fn) {
