@@ -46,7 +46,7 @@ test('echo', function (t) {
   var received = false
   var _ts = 0
   function createBPeer (send, timer, self, ts) {
-    t.equal(ts, 0)
+    t.equal(ts, 1)
     send('hello', {address: a, port: 10}, 1)
     return function onMessage (msg, addr, port, ts) {
       console.log("RECV_A", msg, addr, port)
@@ -645,7 +645,7 @@ test('sleeping while timer', function (t) {
   var addr = {address: '1.2.3.4', port:1234}
   var node = new Node(function (send, timer) {
     timer(100, 100, (ts)=>{
-      send('hello_'+(++n)+'__'+ts, addr, 1234)
+      send('hello_'+(++n)+'__'+(ts-1), addr, 1234)
     })
     return function (msg) {
       received.push(msg)
@@ -676,7 +676,7 @@ test('sleeping while receiving', function (t) {
   var echo_node = new Node(function (send, timer) {
     timer(100, 100, (ts)=>{
       console.log("SEND!", ts)
-      send('hello_'+(++n)+'__'+ts, addr, 1234)
+      send('hello_'+(++n)+'__'+(ts-1), addr, 1234)
     })
     return function (msg, addr, port) {
     }
