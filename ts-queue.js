@@ -11,7 +11,7 @@ function assertForwards (curr_ts, next_ts) {
 module.exports = class TsQueue extends Heap {
   constructor () {
     super(cmp)
-    this.ts = 0
+    this.ts = 1
   }
 
   push () {
