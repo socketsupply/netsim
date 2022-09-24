@@ -1,5 +1,13 @@
-var {iterate, Node, Network, IndependentNat, IndependentFirewallNat, DependentNat} = require('../index')
-var network = new Network()
+const {
+  iterate,
+  Node,
+  Network,
+  IndependentNat,
+  IndependentFirewallNat,
+  DependentNat
+} = require('../index')
+
+const network = new Network()
 
 var test = require('tape')
 function noop () {}
@@ -247,7 +255,7 @@ test('nat (no firewall) must be opened by outgoing messages', function (t) {
   nat_A.add(a, node_a = new Node((send) => (msg, addr, port) => {
     received_a.push({msg, addr, port})
   }))
-  nat_B.add(b, node_b = new Node((send) => (msg, addr, port) => {     
+  nat_B.add(b, node_b = new Node((send) => (msg, addr, port) => {
       received_b.push({msg, addr, port})
     }
   ))
@@ -274,7 +282,7 @@ test('nat (no firewall) must be opened by outgoing messages', function (t) {
 
 
   //Alice opens a port, by messaging the intro server C.
-  node_a.send("A->C", {address: C, port: 1}, 10) 
+  node_a.send("A->C", {address: C, port: 1}, 10)
   network.iterate(-1)
 
   t.ok(received_a.length)
@@ -285,7 +293,7 @@ test('nat (no firewall) must be opened by outgoing messages', function (t) {
   t.notEqual(echo.msg.port, 10)
 
   //Bob holepunches to Alice by sending to the port opened by previous message
-  node_b.send("B-(holepunch)->A", {address: A, port: echo.msg.port}, 20) 
+  node_b.send("B-(holepunch)->A", {address: A, port: echo.msg.port}, 20)
   network.iterate(-1)
   t.ok(received_a.length)
   var holepunch = received_a.shift()
@@ -329,7 +337,7 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   nat_A.add(a, node_a = new Node((send) => (msg, addr, port) => {
     received_a.push({msg, addr, port})
   }))
-  nat_B.add(b, node_b = new Node((send) => (msg, addr, port) => {     
+  nat_B.add(b, node_b = new Node((send) => (msg, addr, port) => {
     received_b.push({msg, addr, port})
   }))
 
@@ -363,8 +371,8 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   t.equal(received_b.length, 0)
 
   //Alice opens a port, by messaging the intro server C.
-  node_a.send("A->C", {address: C, port: 1}, 10) 
-  node_b.send("B->C", {address: C, port: 1}, 10) 
+  node_a.send("A->C", {address: C, port: 1}, 10)
+  node_b.send("B->C", {address: C, port: 1}, 10)
   network.iterate(-1)
 
   t.equal(received_a.length, 1)
@@ -372,7 +380,7 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
 
   t.ok(received_a.length)
   t.ok(received_b.length)
-  
+
   var echo_a = received_a.shift()
   var echo_b = received_b.shift()
   t.deepEqual(echo_a.addr, {address:C, port: 1})
@@ -382,14 +390,14 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
   t.equal(Object.keys(nat_B.firewall).length, 1)
 
   //Bob opens a port for alice by sending a packet to her, but Alice's firewall does not let it through
-  node_b.send("B-(holepunch)->A", {address: A, port: echo_a.msg.port}, 10) 
+  node_b.send("B-(holepunch)->A", {address: A, port: echo_a.msg.port}, 10)
   network.iterate(-1)
 
   //this message did not get through but it did open B's firewall
   t.equal(received_a.length, 0)
   t.equal(received_b.length, 0)
 
-  console.log(nat_B.firewall) ///XXX??? 
+  console.log(nat_B.firewall) ///XXX???
   console.log(received_echo)
 
   t.equal(Object.keys(nat_B.firewall).length, 2)
@@ -397,13 +405,13 @@ test('nat (with firewall) must be opened by outgoing messages direct to peer', f
 
   //Alice holepunches to Body by sending to the port opened found from C, through the hole opened
   //by Bob's by previous message
-  node_a.send("A-(holepunch)->B", {address: B, port: echo_b.msg.port}, 10) 
+  node_a.send("A-(holepunch)->B", {address: B, port: echo_b.msg.port}, 10)
   network.iterate(-1)
 
   t.equal(received_b.length, 1)
 
   //Bob can now send to Alice
-  node_b.send("B-(holepunch)->A", {address: A, port: echo_a.msg.port}, 10) 
+  node_b.send("B-(holepunch)->A", {address: A, port: echo_a.msg.port}, 10)
   network.iterate(-1)
 
   t.equal(received_a.length, 1)
@@ -448,19 +456,19 @@ test('one side dependent nat requires birthday paradox', function (t) {
   nat_A.add(a, node_a = new Node((send) => (msg, addr, port) => {
     received_a.push({msg, addr, port})
   }))
-  nat_B.add(b, node_b = new Node((send) => (msg, addr, port) => {     
+  nat_B.add(b, node_b = new Node((send) => (msg, addr, port) => {
     received_b.push({msg, addr, port})
   }))
 
 
   //Alice opens a port, by messaging the intro server C.
-  node_a.send("A->C", {address: C, port: 1}, 10) 
-//  node_b.send.push({msg: "A->B", addr: {address: C, port: 1}, port: 10}) 
+  node_a.send("A->C", {address: C, port: 1}, 10)
+//  node_b.send.push({msg: "A->B", addr: {address: C, port: 1}, port: 10})
   network.iterate(-1)
 
   t.ok(received_a.length)
 //  t.ok(received_b.length)
-  
+
   var echo_a = received_a.shift()
 //  var echo_b = received_b.shift()
   t.deepEqual(echo_a.addr, {address:C, port: 1})
@@ -481,19 +489,19 @@ test('one side dependent nat requires birthday paradox', function (t) {
   var rand_port = create_rand_port()
   for(var i = 0; i < N; i++) {
     //B the hard side opens 256 ports
-    node_b.send("B-(hb:holepunch)->A", {address: A, port: echo_a.msg.port}, rand_port()) 
+    node_b.send("B-(hb:holepunch)->A", {address: A, port: echo_a.msg.port}, rand_port())
   }
 
   network.iterate(-1)
   t.equal(received_a.length, 0)
 
-  
+
   var rand_port = create_rand_port()
   var tries = 0
   while(!received_b.length) {
     for(var i = 0; i < N; i++) {
       //the easy side sends messages to random ports
-      node_a.send("B-(hb:holepunch)->A", {address: B, port: rand_port()}, 10) 
+      node_a.send("B-(hb:holepunch)->A", {address: B, port: rand_port()}, 10)
     }
     //console.log("ITERATE")
     tries += N
@@ -511,7 +519,7 @@ test('one side dependent nat requires birthday paradox', function (t) {
   t.end()
 })
 
-//to make a connection between two 
+//to make a connection between two
 
 function test_hairpinning (name, Nat, supports_hairpinning) {
   test('hairpinning nat:'+name, function (t) {
@@ -538,7 +546,7 @@ function test_hairpinning (name, Nat, supports_hairpinning) {
     nat.add(A, node_a = new Node((send) => (msg, addr, port) => {
       received_a.push({msg, addr, port})
     }))
-    nat.add(B, node_b = new Node((send) => (msg, addr, port) => {     
+    nat.add(B, node_b = new Node((send) => (msg, addr, port) => {
       received_b.push({msg, addr, port})
     }))
 
@@ -605,7 +613,7 @@ test('offline', function (t) {
       send(msg, addr, port)
     }
   })
-  network.add('1.2.3.4', echo_node)  
+  network.add('1.2.3.4', echo_node)
   var addr = {address: '1.2.3.4', port:1234}
   var send
   var node = new Node(function (_send) {
@@ -641,7 +649,7 @@ test('sleeping while timer', function (t) {
       send(msg, addr, port)
     }
   })
-  network.add('1.2.3.4', echo_node)  
+  network.add('1.2.3.4', echo_node)
   var addr = {address: '1.2.3.4', port:1234}
   var node = new Node(function (send, timer) {
     timer(100, 100, (ts)=>{
@@ -681,7 +689,7 @@ test('sleeping while receiving', function (t) {
     return function (msg, addr, port) {
     }
   })
-  network.add('1.2.3.4', echo_node)  
+  network.add('1.2.3.4', echo_node)
   var node = new Node(function (send, timer) {
     return function (msg) {
       received.push(msg)
@@ -723,7 +731,7 @@ test('nat timeout', function (t) {
         received.push(msg)
       }
     })
-    network.add('1.2.3.4', echo_node)  
+    network.add('1.2.3.4', echo_node)
     network.add('5.6.7.8', nat)
     nat.add('5.6.7.80', node)
     return [node, nat]
