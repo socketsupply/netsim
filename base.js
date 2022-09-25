@@ -1,4 +1,5 @@
 var TsQueue = require('./ts-queue')
+const debug = require('debug')('netsim')
 
 function assertAddress (addr, name='addr') {
   if(!isPort(addr.port) && 'string' !== typeof addr.address)
@@ -109,7 +110,7 @@ class Network extends Node {
       this.queue.delay(calcLatency(source, dest), (ts) => {
         var s = JSON.stringify(msg)
         if(s.length > 23) s = s.substring(0, 20) + '...' 
-        console.log('MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s, ts)
+        debug('MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s, ts)
         if(!dest.sleeping)
           dest.onMessage(msg, _addr, addr.port, ts)
       })
