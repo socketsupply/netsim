@@ -12,7 +12,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "debug": "^4.3.4",
     "heap": "^0.2.7"
   },
   "repository": {
