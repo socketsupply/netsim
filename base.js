@@ -57,8 +57,14 @@ class Node {
       return fn(ts)
     })
   }
-  sleep (sleeping) {
-    this.sleeping = sleeping === true
+  sleep (sleeping, ts) {
+    if(ts) {
+      this.queue.push({ts: this.queue.ts + ts, fn: ()=>{
+        this.sleeping = sleeping === true
+      }})
+    }
+    else
+      this.sleeping = sleeping === true
   }
 }
 
@@ -133,6 +139,10 @@ class Network extends Node {
   iterateUntil (until_ts) {
     this.init(this.queue.ts)
     this.queue.drain(until_ts)
+  }
+  iterateMore (until_ts) {
+    this.init(this.queue.ts)
+    this.queue.drain(this.queue.ts + until_ts)
   }
 /*  delay (wait, fn) {
     if(wait <= 0) throw new Error('delay must be positive, was:'+wait)
