@@ -22,8 +22,15 @@ function toAddress (a) {
 
 module.exports = (random=Math.random) => {
 
+function maybeDrop (dropProb) {
+  var r = random()
+  //if(r <= (dropProb|0))
+  return r > (dropProb||0)
+}
+
 class Node {
 //  network = null;
+  dropProb = 0
   constructor (proto) {
     if('function' === typeof proto)
       this.init = (ts)=>{
@@ -44,8 +51,9 @@ class Node {
   send (msg, addr, port) {
     assertAddress(addr)
     if(!isPort(port)) throw new Error('must provide source port')
-    if(this.network && !this.sleeping)
+    if(this.network && !this.sleeping && maybeDrop(this.dropProb)) {
       this.network.send(msg, addr, port, this)
+    }
     //else if offline, just drop messages
   }
   timer (delay, repeat, fn) {
@@ -75,6 +83,7 @@ function calcLatency (s,d) {
 class Network extends Node {
   subnet = null
   inited = false
+  dropProb = 0
   constructor (prefix) {
     super()
     this.prefix = prefix
@@ -110,6 +119,7 @@ class Network extends Node {
   send (msg, addr, port, source) {
     assertAddress(addr)
     if(!source) throw new Error('must provide source')
+    if(!maybeDrop(this.dropProb)) return
     var dest = this.subnet[addr.address]
     var _addr = {address:source.address, port}
     if(dest) {
