@@ -783,3 +783,65 @@ test('create node with object', function (t) {
 
   t.end()
 })
+
+test('drop packets randomly', function (t) {
+//  t.plan(2)
+//  console.log(network)
+  var a = 'a.a.a.a'
+  var b = 'b.b.b.b'
+  var received = 0
+  var _ts = 0
+  function createBPeer (send, timer, self, ts) {
+    for(var i = 0; i < 1000; i++)
+      send('hello', {address: a, port: 10}, 1)
+    return function onMessage (msg, addr, port, ts) {
+    }
+  }
+  //echo the received message straight back.
+  function createAPeer (send) {
+    return function onMessage (msg, addr, port) {
+      received ++
+    }
+  }
+
+  network.dropProb = 0.1
+  network.add(a,  new Node(createAPeer))
+  network.add(b,  new Node(createBPeer))
+  network.iterate(-1)
+  console.log(received)
+  t.ok(received > 850, 'at least 850')
+  t.ok(received < 950, 'less than 950')
+  t.end()
+})
+
+test('drop packets randomly, per node', function (t) {
+//  t.plan(2)
+//  console.log(network)
+  var a = 'a.a.a.a'
+  var b = 'b.b.b.b'
+  var received = 0
+  var _ts = 0
+  function createBPeer (send, timer, self, ts) {
+    for(var i = 0; i < 1000; i++)
+      send('hello', {address: a, port: 10}, 1)
+    return function onMessage (msg, addr, port, ts) {
+    }
+  }
+  //echo the received message straight back.
+  function createAPeer (send) {
+    return function onMessage (msg, addr, port) {
+      received ++
+    }
+  }
+
+  network.dropProb = 0
+  var node_b = new Node(createBPeer)
+  node_b.dropProb = 0.5
+  network.add(a,  new Node(createAPeer))
+  network.add(b,  node_b)
+  network.iterate(-1)
+  console.log(received)
+  t.ok(received > 450, 'at least 850')
+  t.ok(received < 550, 'less than 950')
+  t.end()
+})
