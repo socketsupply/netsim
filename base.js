@@ -67,9 +67,7 @@ class Node {
   }
   sleep (sleeping, ts) {
     if(ts) {
-      this.queue.push({ts: this.queue.ts + ts, fn: ()=>{
-        this.sleeping = sleeping === true
-      }})
+      this.network.timer(ts, 0, ()=>{ this.sleeping = sleeping === true })
     }
     else
       this.sleeping = sleeping === true
