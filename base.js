@@ -54,6 +54,11 @@ class Node {
     if(this.network && !this.sleeping && maybeDrop(this.dropProb)) {
       this.network.send(msg, addr, port, this)
     }
+    else if(debug.level == 2) {
+      var s = JSON.stringify(msg)
+      if(s.length > 23) s = s.substring(0, 20) + '...' 
+      debug(2, 'DROP', toAddress({address:this.address, port})+'->'+toAddress(addr), s, this.network.queue.ts)
+    }
     //else if offline, just drop messages
   }
   timer (delay, repeat, fn) {
@@ -117,14 +122,25 @@ class Network extends Node {
   send (msg, addr, port, source) {
     assertAddress(addr)
     if(!source) throw new Error('must provide source')
-    if(!maybeDrop(this.dropProb)) return
+    if(!maybeDrop(this.dropProb)) {
+      if(debug.level == 2) {
+        var s = JSON.stringify(msg)
+        if(s.length > 23) s = s.substring(0, 20) + '...' 
+        debug(2, 'DROP', toAddress({address:source.address, port})+'->'+toAddress(addr), s, this.queue.ts)
+      }
+
+      return
+    }
     var dest = this.subnet[addr.address]
     var _addr = {address:source.address, port}
     if(dest) {
       this.queue.delay(calcLatency(source, dest), (ts) => {
-        var s = JSON.stringify(msg)
-        if(s.length > 23) s = s.substring(0, 20) + '...' 
-        debug(2, 'MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s, ts)
+
+        if(debug.level == 2) {
+          var s = JSON.stringify(msg)
+          if(s.length > 23) s = s.substring(0, 20) + '...' 
+          debug(2, 'MSG', toAddress({address:source.address, port})+'->'+toAddress(addr), s, ts)
+        }
         if(!dest.sleeping)
           dest.onMessage(msg, _addr, addr.port, ts)
       })
