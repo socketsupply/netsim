@@ -5,7 +5,7 @@ function cmp (a, b) {
 }
 
 function assertForwards (curr_ts, next_ts) {
-  if (!(curr_ts < next_ts)) { throw new Error('time cannot go backwards, current ' + curr_ts + ' should have been before next item:' + next_ts) }
+  if (!(curr_ts <= next_ts)) { throw new Error('time cannot go backwards, current ' + curr_ts + ' should have been before next item:' + next_ts) }
 }
 
 module.exports = class TsQueue extends Heap {
