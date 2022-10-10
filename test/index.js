@@ -653,6 +653,7 @@ test('sleeping while timer', function (t) {
   var addr = {address: '1.2.3.4', port:1234}
   var node = new Node(function (send, timer) {
     timer(100, 100, (ts)=>{
+      console.log('TIMER', ts)
       send('hello_'+(++n)+'__'+(ts-1), addr, 1234)
     })
     return function (msg) {
@@ -670,7 +671,9 @@ test('sleeping while timer', function (t) {
 
   network.iterateUntil(1000)
 
-  t.deepEqual(received, ['hello_1__100', 'hello_2__200', 'hello_3__800', 'hello_4__900'])
+  //sleep pauses the timer, but since the wake time is more than the interval, it's triggered immediately on wakeup.
+  //hence the ts passed to the timer is now aligned to the new wakeup time
+  t.deepEqual(received, ['hello_1__100', 'hello_2__200', 'hello_3__750', 'hello_4__850', 'hello_5__950'])
 
   t.end()
 
@@ -743,6 +746,7 @@ test('schedule sleep while receiving', function (t) {
   t.end()
 
 })
+
 
 
 test('nat timeout', function (t) {
