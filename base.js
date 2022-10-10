@@ -47,6 +47,8 @@ class Node {
       proto.timer = this.timer.bind(this)
       proto.send = this.send.bind(this)
     }
+    this.sleeping = false
+    this.awaken = []
   }
   send (msg, addr, port) {
     assertAddress(addr)
@@ -61,21 +63,67 @@ class Node {
     }
     //else if offline, just drop messages
   }
+  delay (delay, fn) {
+    this.network.delay(delay, (ts) => {
+      if(this.sleeping)
+        this.awaken.push(fn)
+      else
+        return fn(ts)
+    })
+  }
+
   timer (delay, repeat, fn) {
+//    this.nextwork.timer(delay, repeat, fn)
+    if (delay < 0) throw new Error('delay < 0')
+    if (repeat < 0) throw new Error('repeat < 0')
+
+    if (!repeat) {
+      this.delay(delay, fn)
+    } else {
+      var next = (ts) => {
+        if (fn(ts) !== false) {
+          this.delay(repeat, next)
+        }        
+      }
+      this.delay(delay, next)
+    }
+
+    /*
     this.network.timer(delay, repeat, (ts)=>{
       if(this.sleeping) {
+        if(!~this.awaken.indexOf(fn))
+          this.awaken.push(fn)
+        return
         if(repeat) return
+        //XXX I think I was too lazy here to model rescheduling timers that delayed
+        //    it should get called when it comes out of sleep. If it's repeated, it skips this round
+        //    if it's delayed, it should resume once sleep ends.
         if(delay) throw new Error('sleeping during a delay only timer is not supported')
       }
       return fn(ts)
     })
+    */
   }
   sleep (sleeping, ts) {
+
     if(ts) {
-      this.network.timer(ts, 0, ()=>{ this.sleeping = sleeping === true })
+      //here we are scheduling a time to wake up,
+      //must use the networks delay, because the node is asleep, so timers are not processed.
+      this.network.queue.delay(ts, ()=>{ this.sleep(sleeping) })
     }
-    else
-      this.sleeping = sleeping === true
+    else {
+      var _sleeping = (this.sleeping === true)
+      this.sleeping = (sleeping === true)
+      //if we just woke up
+      console.log('wakeup?', _sleeping, sleeping === true)
+      if(_sleeping === true && (sleeping === true) === false) {
+        //woke
+        console.log("WAKEUP")
+        while(this.awaken.length && !this.sleeping) {
+          this.awaken.shift()(this.network.queue.ts)
+        }
+      }
+    }
   }
 }
 
@@ -168,13 +216,13 @@ class Network extends Node {
     this.init(this.queue.ts)
     this.queue.drain(this.queue.ts + until_ts)
   }
-/*  delay (wait, fn) {
+  delay (wait, fn) {
     if(wait <= 0) throw new Error('delay must be positive, was:'+wait)
     this.queue.delay(wait, fn)
-  }*/
-  timer (delay, repeat, fn) {
-    this.queue.timer(delay, repeat, fn)
   }
+//  timer (delay, repeat, fn) {
+ //   this.queue.timer(delay, repeat, fn)
+ // }
   drop (msg, addr) {
     throw new Error('cannot send to outside address:'+JSON.stringify(addr))
   }
