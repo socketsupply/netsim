@@ -43,19 +43,4 @@ module.exports = class TsQueue extends Heap {
       item.fn(item.ts)
     }
   }
-
-  timer (delay, repeat, fn) {
-    if (delay < 0) throw new Error('delay < 0')
-    if (repeat < 0) throw new Error('repeat < 0')
-
-    if (!repeat) { this.delay(delay, fn) } else {
-      const self = this
-      function next (ts) {
-        if (fn(ts) !== false) {
-          self.delay(repeat, next)
-        }
-      }
-      this.delay(delay || repeat, next)
-    }
-  }
 }
