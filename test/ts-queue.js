@@ -23,7 +23,10 @@ test('timer', function (t) {
   var q = new TsQueue()
   var called = 0
   t.equal(q.ts, 1)
-  q.timer(1, 10, ()=>{called ++})
+  q.delay(1, function next () {
+    called ++
+    q.delay(10, next)
+  })
   t.equal(q.ts, 1)
   q.drain(11)
   t.equal(q.ts, 2)
