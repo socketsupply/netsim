@@ -85,7 +85,10 @@ class Node {
           this.delay(repeat, next)
         }        
       }
-      this.delay(delay, next)
+      if(delay === 0)
+        next(this.network.queue.ts)
+      else
+        this.delay(delay, next)
     }
 
     /*
@@ -115,10 +118,8 @@ class Node {
       var _sleeping = (this.sleeping === true)
       this.sleeping = (sleeping === true)
       //if we just woke up
-      console.log('wakeup?', _sleeping, sleeping === true)
       if(_sleeping === true && (sleeping === true) === false) {
         //woke
-        console.log("WAKEUP")
         while(this.awaken.length && !this.sleeping) {
           this.awaken.shift()(this.network.queue.ts)
         }
@@ -258,8 +259,8 @@ class Nat extends Network {
     this.ports[r] = true 
     return r
   }
-  addFirewall () {
-
+  addFirewall (addr, port, ts) {
+    //override this
   }
   getFirewall (addr) {
     //returns the current time, same effect as always letting it through
