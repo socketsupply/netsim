@@ -182,6 +182,12 @@ class Network extends Node {
     }
     var dest = this.subnet[addr.address]
     var _addr = {address:source.address, port}
+
+    if(this.on_send) {
+      this.on_send(msg, addr, {address: source.address, port})
+    }
+    console.log('send', this.on_send)
+
     if(dest) {
       this.queue.delay(calcLatency(source, dest), (ts) => {
 
