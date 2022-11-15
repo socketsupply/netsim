@@ -882,3 +882,50 @@ test('drop packets randomly, per node', function (t) {
   t.ok(received < 550, 'less than 950')
   t.end()
 })
+
+test('on_send event', function (t) {
+
+  var network = new Network()
+  var sent = []
+  network.on_send = (msg, dest, source) => {
+    sent.push({msg, dest, source})
+  }
+
+  var echo = new Node({
+    on_msg (msg, source, port) {
+      console.log('on_msg')
+      this.send({...msg, type: 'echo'}, source, port)
+    }
+  })
+
+  var hello = new Node ({
+    init () {
+      console.log('init')
+      this.send({type:'hello'}, {address: echo.address, port: 1234}, 1234)
+    },
+    on_msg () {
+    }
+  })
+
+  network.add('1.2.3.4', echo)
+  network.add('4.5.6.7', hello)
+
+  network.iterate(-1)
+
+  console.log(sent)
+  t.equal(sent.length, 2, 'a single on_send event occured')
+  t.deepEqual(sent , [
+    {
+      msg: { type: 'hello' },
+      dest: { address: '1.2.3.4', port: 1234 },
+      source: { address: '4.5.6.7', port: 1234 }
+    },
+    {
+      msg: { type: 'echo' },
+      dest: { address: '4.5.6.7', port: 1234 },
+      source: { address: '1.2.3.4', port: 1234 }
+    }
+  ])
+  t.end()
+
+})
