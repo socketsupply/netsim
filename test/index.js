@@ -908,7 +908,7 @@ test('on_send event', function (t) {
   })
 
   network.add('1.2.3.4', echo)
-  network.add('4.5.6.7', hello)
+  network.add('5.6.7.8', hello)
 
   network.iterate(-1)
 
@@ -918,14 +918,107 @@ test('on_send event', function (t) {
     {
       msg: { type: 'hello' },
       dest: { address: '1.2.3.4', port: 1234 },
-      source: { address: '4.5.6.7', port: 1234 }
+      source: { address: '5.6.7.8', port: 1234 }
     },
     {
       msg: { type: 'echo' },
-      dest: { address: '4.5.6.7', port: 1234 },
+      dest: { address: '5.6.7.8', port: 1234 },
       source: { address: '1.2.3.4', port: 1234 }
     }
   ])
+  t.end()
+
+})
+
+function isString (s) {
+  return 'string' === typeof s
+}
+
+function expect_msgs (network, t) {
+  var expected = []
+
+  function eq_addr (a, b) {
+    console.log('EQ', a, b)
+    if(a === b) return true
+    if(a.address === b || b.address === a) return true
+    return (a.address === b.address && a.port === b.port)
+/*
+    if(isString(b)) {
+      if(isString(a)) return a === b
+      else            return b === a.address
+    }
+    else if(isString(a)) {
+      return b.address === a
+    }
+    else
+      return a.address === b.address && a.port === b.port
+*/
+  }
+  function eq_obj (a, b) {
+    for(var k in b)
+      if(a[k] != b[k]) return false
+    return true
+  }
+
+
+  network.on_send = (msg, dest, source) => {
+    //on each message, iterate over expected messages and if one matches, remove it.
+      console.log({source, dest, msg})
+      console.log('expected', expected)
+    for(var i = 0; i < expected.length; i++) {
+      var ex = expected[i]
+      console.log(ex, '===', {msg,dest, source})
+      console.log('eq_addr', eq_addr(dest, ex.dest), eq_addr(source, ex.source), eq_obj(msg, ex.msg))
+      if(eq_addr(dest, ex.dest) && eq_addr(source, ex.source) && eq_obj(msg, ex.msg)) {
+        console.log('SLICE', ex[i])
+        return expected.splice(i, 1)
+      }
+    }
+  }
+  function expect (msg, source, dest) {
+    expected.push({msg, source, dest})
+  }
+
+  expect.verify = function () {
+    t.deepEqual(expected, [], 'all expected messages must be consumed')
+  }
+
+  return expect
+}
+
+
+
+test('test message sending via expect', function (t) {
+
+  var network = new Network()
+  
+  var expect = expect_msgs(network, t)
+
+  var echo = new Node({
+    on_msg (msg, source, port) {
+      console.log('on_msg')
+      this.send({...msg, type: 'echo'}, source, port)
+    }
+  })
+
+  var hello = new Node ({
+    init () {
+      console.log('init')
+      this.send({type:'hello'}, {address: echo.address, port: 1234}, 1234)
+    },
+    on_msg () {
+    }
+  })
+  var A, B
+  network.add(A = '1.2.3.4', echo)
+  network.add(B = '5.6.7.8', hello)
+
+  expect({type: 'hello'}, B, A)
+  expect({type: 'echo'}, A, B)
+
+  network.iterate(-1)
+
+  expect.verify(t)
   t.end()
 
 })
