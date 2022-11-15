@@ -186,7 +186,6 @@ class Network extends Node {
     if(this.on_send) {
       this.on_send(msg, addr, {address: source.address, port})
     }
-    console.log('send', this.on_send)
 
     if(dest) {
       this.queue.delay(calcLatency(source, dest), (ts) => {
